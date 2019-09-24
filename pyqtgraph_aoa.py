@@ -59,12 +59,12 @@ zgrid.scale(0.1,0.1,1)
 
 
 fs = 96000
-block_size = 2048
+block_size = 4096
 S = sd.Stream(samplerate=fs,blocksize=block_size,channels=2)
 S.start()
 
-hp_freq = 500.0
-ba_filt = signal.butter(2,hp_freq/float(fs),'high')
+bp_freq = np.array([500.0,10000.0])
+ba_filt = signal.butter(2, bp_freq/float(fs*0.5),'bandpass')
 
 
 p = np.zeros(block_size*3).reshape((-1,3))
@@ -75,23 +75,30 @@ w.addItem(pl)
 all_xs = np.linspace(-1,1,S.blocksize)
    
     
-
+threshold = 0.04
 
 def update():
-    global S,calc_rms,all_xs, all_colors, fs
+    global S,calc_rms,all_xs, all_colors, fs, threshold
 
     try:
         in_sig,status = S.read(S.blocksize)
         delay_crossch = calc_delay(in_sig,ba_filt,fs)
         rms_sig = calc_rms(in_sig[:,0])
-        if rms_sig > 0.1:
+        if rms_sig > threshold:
             all_zs = np.tile(rms_sig,S.blocksize)
-            all_delay = np.tile(-delay_crossch*10**4,S.blocksize)
+            movement_amp_factor = 0.5*10**5
+            all_delay = np.tile(-delay_crossch*movement_amp_factor,
+                                S.blocksize)
             all_ys = in_sig[:,0]+all_delay
             xyz = np.column_stack((all_xs,all_ys,all_zs))
-    
-            pl.setData(pos=xyz,color=all_colors)
         else:
+            # when there's low signal at the mics
+            x = np.linspace(-1,1,S.blocksize)
+            y = np.zeros(S.blocksize)
+            z= np.zeros(S.blocksize)
+            
+            xyz = np.column_stack((x,y,z))
+        pl.setData(pos=xyz,color=all_colors)
             
     except KeyboardInterrupt:
         S.stop()
