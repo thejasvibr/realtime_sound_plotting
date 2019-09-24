@@ -9,6 +9,7 @@ Created on Wed Nov 29 10:51:24 2017
 grids and plot layout based off the example scripts in the pyqtgraph library
 """
 import sys
+import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 import numpy as np
@@ -58,11 +59,11 @@ zgrid.scale(0.1,0.1,1)
 
 
 fs = 96000
-block_size = 4096
+block_size = 2048
 S = sd.Stream(samplerate=fs,blocksize=block_size,channels=2)
 S.start()
 
-hp_freq = 100.0
+hp_freq = 500.0
 ba_filt = signal.butter(2,hp_freq/float(fs),'high')
 
 
@@ -72,6 +73,8 @@ pl = gl.GLScatterPlotItem(pos=p,color=all_colors)
 w.addItem(pl)
 
 all_xs = np.linspace(-1,1,S.blocksize)
+   
+    
 
 
 def update():
@@ -81,18 +84,25 @@ def update():
         in_sig,status = S.read(S.blocksize)
         delay_crossch = calc_delay(in_sig,ba_filt,fs)
         rms_sig = calc_rms(in_sig[:,0])
-        all_zs = np.tile(rms_sig,S.blocksize)
-        all_delay = np.tile(-delay_crossch*10**4,S.blocksize)
-        all_ys = in_sig[:,0]+all_delay
-        xyz = np.column_stack((all_xs,all_ys,all_zs))
-
-        pl.setData(pos=xyz,color=all_colors)
+        if rms_sig > 0.1:
+            all_zs = np.tile(rms_sig,S.blocksize)
+            all_delay = np.tile(-delay_crossch*10**4,S.blocksize)
+            all_ys = in_sig[:,0]+all_delay
+            xyz = np.column_stack((all_xs,all_ys,all_zs))
+    
+            pl.setData(pos=xyz,color=all_colors)
+        else:
+            
     except KeyboardInterrupt:
         S.stop()
         sys.exit()
-
-
-
 t = QtCore.QTimer()
 t.timeout.connect(update)
 t.start(0)
+
+
+if __name__ == '__main__':
+    # thanks to https://stackoverflow.com/a/35646126/4955732
+    if sys.flags.interactive != 1 or not hasattr(QtCore, 'PYQT_VERSION'):
+        pg.QtGui.QApplication.exec_()
+       
