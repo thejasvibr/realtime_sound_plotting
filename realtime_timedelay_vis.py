@@ -104,8 +104,8 @@ def update():
             xyz = np.column_stack((all_xs,all_ys,all_zs))
         else:
             # when there's low signal at the mics
-            y = np.zeros(S.blocksize)*1
-            z= np.random.random(S.blocksize)*1
+            y = np.zeros(S.blocksize)
+            z= y.copy()
             
             xyz = np.column_stack((all_xs,y,z))
       
