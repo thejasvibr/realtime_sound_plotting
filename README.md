@@ -6,11 +6,11 @@ the peak of the cross-correlation is visualised as the line moving to the left o
 
 The level of the sound is also visualised in the waveform and the apparent 'height' of the incoming audio. 
 
-![Below-threshold sound](nosound.PNG=250x)
+![Below-threshold sound](nosound.PNG width=50% height=50%)
 
-![Sound from the left](sound_left.PNG=250x)
+![Sound from the left](sound_left.PNG width=50% height=50%)
 
-![Sound from the right](sound_right.PNG=250x)
+![Sound from the right](sound_right.PNG width=50% height=50%)
 
 
 
