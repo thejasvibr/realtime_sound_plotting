@@ -18,17 +18,63 @@ grids and plot layout based off the example scripts in the pyqtgraph library
 """
 
 import numpy as np
+import time
+import queue
+from queue import Empty
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from pyqtgraph.Qt import QtCore
 from scipy import signal 
 import sounddevice as sd
+import soundfile as sf
 from common_functions import calc_rms, calc_multich_delays
+from localisation_mpr2003 import tristar_mellen_pachter
+#%%
+micxyz = np.loadtxt('micxyz.csv', delimiter=',')
+orig_sources = np.loadtxt('sources.csv', delimiter=',')
+
+audiotype = 'audiofile'
+audiofile_path = './freefile_trista60cm.wav'
+
+audio, fs = sf.read(audiofile_path)
+
+fs = sf.info(audiofile_path).samplerate
+block_size = 4096
+starts = range(0,audio.shape[0],int(block_size))
+
+threshold = 1e-2
+vsound = 340.0 # m/s
+highpass_coeffs = signal.butter(1, 100/(fs*0.5), 'high')
+#%%
+audio_queue = queue.Queue()
+
+for i, startpoint in enumerate(starts):
+    chunk = audio[startpoint:startpoint+block_size,:]
+    audio_queue.put(chunk)
+    
 
 
-
-
-
+def get_xyz_tristar():
+    global audio_queue
+    
+    if not audio_queue.empty():
+        audiochunk = audio_queue.get()
+        channel_rms  = np.array([calc_rms(audiochunk[:,each]) for each in range(audio.shape[1])])
+        if np.all(channel_rms>threshold):
+            delays = calc_multich_delays(audiochunk, ba_filt=highpass_coeffs)
+            di = delays*vsound
+            solns = tristar_mellen_pachter(micxyz,di)
+            if solns[0].size>0:
+                return solns[0]
+    else:
+        return np.array([])
+# import time
+# start = time.time()
+# for i in range(10):
+#     get_xyz_tristar()
+# stop = time.time()
+#print(f'Time elapsed for 10 runs: {stop-start}')
+#%%
 
 
 app = pg.mkQApp("Realtime angle-of-arrival plot")
@@ -38,70 +84,32 @@ w.setWindowTitle('Realtime angle-of-arrival plot')
 w.setCameraPosition(distance=25)
 
 g = gl.GLGridItem()
+g.setDepthValue(micxyz[2,2])
 w.addItem(g)
 
+# Add the microphone array here
 
+mic_plot = gl.GLScatterPlotItem(pos=micxyz, color=(1,0,0,1), size=10)
+w.addItem(mic_plot)
 
+# Now add the source data as we get the audio
 
-
-
-##
-# My own data onto the plot window
-
-mypos = np.random.normal(0,1,size=(20,3))*5
-mypos[:,2] = np.abs(mypos[:,2])
-sp_my = gl.GLScatterPlotItem(pos=mypos, color=(1,1,1,1), size=10)
-w.addItem(sp_my)
-
-
-fs = 48000
-block_size = 4096
-
-bp_freq = np.array([500,10000.0])
-ba_filt = signal.butter(2, bp_freq/float(fs*0.5),'bandpass')
-
-S = sd.InputStream(samplerate=fs,blocksize=block_size,channels=2, latency='low')
-S.start()
-
-
-all_xs = np.linspace(-10,10,S.blocksize)
-threshold = 1e-2
-
-
-guidepos = np.column_stack((all_xs, np.zeros(S.blocksize), np.zeros(S.blocksize)))
-guideline = gl.GLScatterPlotItem(pos=guidepos, color=(1,0,1,1), size=10)
-w.addItem(guideline)
-
-
-def get_rms():
-    insig, status = S.read(S.blocksize)
-    print(calc_rms(insig[:,0]))
+all_sources = []
+all_sources.append(micxyz[0,:])
+source_plot = gl.GLScatterPlotItem(pos=all_sources, color=(1,1,0,1), size=10)
+w.addItem(source_plot)
 
 def update():
-    global sp_my, all_xs, threshold, S, ba_filt
+    global source_plot, all_sources
+    out = get_xyz_tristar()
+    if out is None:
+        pass
+    elif out.size>0:
+        all_sources.append(out)
+        source_plot.setData(pos=all_sources)
+    time.sleep(0.2)
     
-    try:
-        in_sig,status = S.read(S.blocksize)
-        delay_crossch = calc_delay(in_sig,ba_filt,fs)
-        rms_sig = calc_rms(in_sig[:,0])
-        if rms_sig > threshold:
-            movement_amp_factor = 3e4
-            all_zs = np.tile(rms_sig*movement_amp_factor*1e-3, S.blocksize)
-            all_delay = np.tile(-delay_crossch*movement_amp_factor,
-                                 S.blocksize)
-            #all_delay = 0.001*1e3
-            all_ys = in_sig[:,0]+all_delay
-            xyz = np.column_stack((all_xs,all_ys,all_zs))
-        else:
-            # when there's low signal at the mics
-            y = np.zeros(S.blocksize)
-            z= y.copy()
-            
-            xyz = np.column_stack((all_xs,y,z))
-      
-        sp_my.setData(pos=xyz)
-    except KeyboardInterrupt:
-        S.stop()
+    
 
     
 t = QtCore.QTimer()

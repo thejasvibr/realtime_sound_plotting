@@ -34,4 +34,4 @@ def calc_multich_delays(multich_audio, **kwargs):
     for each in range(1, nchannels):
         
         delay_set.append(calc_delay(multich_audio[:,[0,each]],**kwargs))
-    return delay_set
+    return np.array(delay_set)
