@@ -29,12 +29,17 @@ def tristar_mellen_pachter(*args):
     which only outputs positive y axis sources.
     '''
     sources = mellen_pachter_raquet_2003(*args)
+    #print('sources:', sources)
     infront_of_array = []
-    if len(sources)>0:
+    if sources.size>3:
         for each in sources:
             x,y,z = each
             if y>= 0:
                 infront_of_array.append(each)
+    elif sources.size==3:
+        x,y,z = sources
+        if y>= 0:
+            infront_of_array.append(sources)
     return infront_of_array
 
 def mellen_pachter_raquet_2003(mic_array, di):
@@ -102,7 +107,7 @@ def choose_correct_mpr_solutions(mic_array, Rs_12, a_b, obs_di):
     
     Returns 
     -------
-    xs : (1,n) or (2,n) np.array
+    xs : (0,), (3,) or (2,3) np.array
         Produces a single source estimate when there's only one positive Rs.
         In case of two positive Rs, then outputs both valid solutions.  
     
