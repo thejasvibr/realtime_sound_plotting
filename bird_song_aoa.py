@@ -55,12 +55,10 @@ X = pra.transform.stft.analysis(
  )
 X = np.swapaxes(X, 2, 0)
 
-
 srp_phat = pra.doa.SRP(micxyz, fs, nfft) # initialise an SRP-instance for your data
 srp_phat.locate_sources(X)
 
 print(f'Angle of arrival is: {srp_phat.azimuth_recon}')
-
 
 #%% Now let's check to see if there's any deviation in the angle-of-arrival
 # across the various calls detected. 
