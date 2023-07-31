@@ -3,10 +3,19 @@
 DOA of a bird calling - recorded with a 2 channel device. 
 =========================================================
 
+Getting similar data
+~~~~~~~~~~~~~~~~~~~~
+Go to Xeno-Canto and type any combination of these in the search box:
+    >>> smp:">22050" q:A dvc:"pcm-m10" 
+    >>> smp:">22050" q:A dvc:"pcm-m10" type:duet 
+    
+Click on the Cat.Nr. in the results list and check to see that the file is a 
+WAV file. If so, then proceed to download the fiel and place it into the working
+directory. Here in this example - we're working on the XC819675 Catalogue Number
+recording (you can also just put this number into the search box.)
 
-Created on Mon Jul 31 23:09:19 2023
-
-@author: theja
+Author: Thejasvi Beleyur
+License: MIT license.
 """
 
 import numpy as np 
@@ -20,7 +29,7 @@ import scipy.ndimage as ndi
 # https://www.sony.com.sg/electronics/support/digital-voice-recorders-pcm-series/pcm-m10/specifications
 mic_separation = 62e-3 # metres
 
-#%% Load the part of the audio file and do some basic filtering.
+#%% Load the manually selected portions of the audio file and do some basic filtering.
 tstarts = np.array([0.585, 7.063, 8.677, 23.778, 25.998])
 tstops = tstarts+0.06
 time_windows = np.column_stack((tstarts, tstops))
@@ -83,7 +92,8 @@ for timestamps in time_windows:
 # above a threshold by getting the Hilbert envelope of the first channel
 hilbert_env = np.abs(signal.hilbert(audio[:,0]))
 # smooth the envelope a bit
-smoother = np.ones(int(fs*0.01))/int(fs*0.01)
+smoothing_size = 0.05
+smoother = np.ones(int(fs*smoothing_size))/int(fs*smoothing_size)
 hilber_env_smooth = signal.convolve(hilbert_env, smoother)
 
 
@@ -91,7 +101,7 @@ plt.figure()
 plt.plot(hilber_env_smooth)
 
 
-threshold = 0.02
+threshold = 10e-3
 above_threshold = hilber_env_smooth>threshold
 plt.hlines(threshold, 0, hilber_env_smooth.size,'r')
 
@@ -100,13 +110,15 @@ chunks_abovethresh, num_calls = ndi.label(above_threshold)
 separate_calls = ndi.find_objects(chunks_abovethresh)
 
 calls = []
-
+min_samples = int(fs*0.05)
 for each in separate_calls:
     detn_durn = each[0].stop-each[0].start
-    if detn_durn>=int(fs*0.05):
+    if detn_durn>=min_samples:
         calls.append(audio[each[0],:])
 
 #%%
+# How stable is the angle of arrival across time. 
+
 call_aoa = []
 for call in calls:
     nfft = 256
@@ -117,16 +129,17 @@ for call in calls:
 
 
     srp_phat = pra.doa.SRP(micxyz, fs, nfft) # initialise an SRP-instance for your data
-    srp_phat.locate_sources(X,freq_range=[2000,6000])
+    srp_phat.locate_sources(X,freq_range=[2000,8000])
     call_aoa.append(srp_phat.azimuth_recon)
     #print(f'Angle of arrival is: {srp_phat.azimuth_recon}')
 
 plt.figure()
 plt.plot(call_aoa, '*-')
-plt.ylim(-45,45)
+plt.ylim(-20,20)
 plt.grid()
 plt.ylabel('Angle of arrival (azimuth, degrees)', fontsize=12)
 plt.xlabel('Detected call #', fontsize=12)
+
 
 #%% Let's try to pick up the time-delay of arrival between the two microphones. 
 # This doesn't work so well as the mics are so close together, w.r.t the 
