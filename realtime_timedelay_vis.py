@@ -112,7 +112,6 @@ def update():
         sp_my.setData(pos=xyz)
     except KeyboardInterrupt:
         S.stop()
-
     
 t = QtCore.QTimer()
 t.timeout.connect(update)

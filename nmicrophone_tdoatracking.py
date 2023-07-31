@@ -49,7 +49,8 @@ orig_sources = np.loadtxt('sources.csv', delimiter=',')
 audiotype = 'audiofile'
 audiofile_path = './freefile_trista60cm.wav'
 #audiofile_path = 'ACTxx_2019-05-07_21-30-57_0000100.WAV'
-audiofile_path = 'ACTxx_2019-05-07_21-22-05_0000089.WAV'
+#audiofile_path = 'ACTxx_2019-05-07_21-22-05_0000089.WAV'
+audiofile_path = 'ACTxx_2019-05-18_22-29-50_0000824.WAV'
 
 fs = sf.info(audiofile_path).samplerate
 loaded_durn = 9 # seconds
@@ -117,7 +118,7 @@ w.setCameraParams(distance=camdistance, azimuth=0)
 # Also add a buffer number text label
 w.grabFramebuffer().save(f'only_array.png')
 
-updatenum = 0
+updatenum = 1
 
 #%%
 def update():
